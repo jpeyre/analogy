@@ -1,0 +1,45 @@
+logger_dir : './runs'
+data_path : './data'
+data_name : 'vrd'
+
+optimizer : 'adam'
+num_epochs : 11
+lr_update : 11
+learning_rate : 0.001
+batch_size : 16
+
+train_split : 'trainval_unrel'
+test_split : 'test'
+
+network : 'netindepemb'
+embed_size : 256
+d_hidden : 256
+num_layers : 2
+sampler : 'priority_object'
+
+
+exp_name : 'vrd_trainvalwounrel_base'
+
+add_gt : True
+net_unigram_s : 'appearanceprecompsubject'
+net_unigram_o : 'appearanceprecompobject'
+net_unigram_r : 'spatialappearanceprecomp'
+net_trigram_sro : 'spatialappearanceprecomp'
+
+net_language : 'word2vec_compositional_2fc'
+criterion_name : 'logloss'
+
+use_precompappearance : True
+#use_precompobjectscore : True
+num_negatives : 3
+
+normalize_vis : False
+normalize_lang : True
+l2norm_input : True
+
+
+# Test options
+cand_test : 'candidates'
+sample_negatives : 'among_vocab'
+epoch_model : 'epoch10'
+embedding_type : 'target'

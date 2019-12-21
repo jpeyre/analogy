@@ -1,0 +1,70 @@
+logger_dir : './runs'
+data_path : './data'
+data_name : 'hico'
+thresh_file : 'thresh_precision_0.3'
+
+optimizer : 'adam'
+num_epochs : 5
+lr_update : 6
+learning_rate : 0.001
+save_epoch : 1
+start_epoch : 10
+num_workers : 8
+pretrained_model : './runs/hico_trainvalzeroshot_base/model_epoch10.pth.tar'
+
+
+train_split : 'trainval_zeroshottriplet'
+test_split : 'test'
+
+
+network : 'netindepemb'
+embed_size : 1024
+d_hidden : 1024
+num_layers : 2
+sampler : 'priority_object'
+
+exp_name : 'hico_trainvalzeroshot_analogy'
+
+add_gt : True
+net_unigram_s : 'appearanceprecompsubject'
+net_unigram_o : 'appearanceprecompobject'
+net_unigram_r : 'spatialappearanceprecomp'
+net_trigram_sro : 'spatialappearanceprecomp'
+
+
+net_language : 'word2vec_compositional_2fc'
+criterion_name : 'logloss'
+
+use_ram : True
+use_precompappearance : True
+num_negatives : 3
+
+normalize_vis : False
+normalize_lang : True
+l2norm_input : True
+
+use_analogy : True
+apply_deformation : True
+gamma : 'regdeep'
+lambda_reg : 1
+detach_target : False
+minimal_mass : 10 
+normalize_source : True
+unique_source_random: True
+precomp_vp_source_embedding : True
+
+apply_deformation : True
+embedding_type : 'aggregsourcecorrection'
+sim_method : 'emb_jointspace'
+
+alpha_r : 0.8
+alpha_s : 0.0
+thresh_method : 'top_5'
+num_source_words_common : 0
+
+
+# Test options
+cand_test : 'candidates'
+sample_negatives : 'among_vocab'
+nms_thresh : 0.3
+epoch_model : 'epoch15'
