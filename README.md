@@ -42,7 +42,7 @@ We release data and pre-trained models for HICO-DET. To set-up the directories, 
 1. **Download the pre-computed data** 
 ```Shell
 wget https://www.rocq.inria.fr/cluster-willow/jpeyre/analogy/data.tar.gz
-unzip data.zip
+tar zxvf data.tar.gz
 ```
 This should be unzip into ./data folder <br />
 This contains the object detections, visual features as well as database objects to run our code on HICO-DET. 
@@ -57,7 +57,7 @@ Download [COCO API](https://github.com/cocodataset/cocoapi) into new directory .
 4. **Download pre-computed models and detections**
 ```Shell
 wget https://www.rocq.inria.fr/cluster-willow/jpeyre/analogy/runs.tar.gz
-unzip runs.zip
+tar zxvf runs.tar.gz
 ```
 This should be unzip into ./runs folder
 
