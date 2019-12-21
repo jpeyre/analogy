@@ -2,7 +2,7 @@ matplotlib==2.1.0
 networkx==1.11
 numpy==1.14.0
 opencv=2.4.11
-pyyaml=3.12
+pyyaml=4.2b1
 scikit-image==0.13.1
 scipy==1.0.0
 tensorboard-logger==0.0.4
