@@ -24,16 +24,11 @@ This code is available for research purpose (MIT License).
 ### Installation
 
 This code was tested on Python 2.7, Pytorch 0.4.0, CUDA 8.0
+Install the dependencies with:
+```Shell
+pip install -r requirements.txt
+```
 
-
-Our code requires to install the following dependencies:<br /> <br />
-tensorboard\_logger <br />
-opencv 2.4 <br />
-pyyaml <br />
-cython <br />
-matplotlib <br />
-scikit-image <br />
-torchvision <br />
 
 ### Data
 
