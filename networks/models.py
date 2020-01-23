@@ -262,7 +262,7 @@ class NetIndepEmb(Net):
             # Get the visual features for batch (i.e. break down forward here) and detach them
             vis_feats = self.get_visual_features(batch_input, 'sro') #(batch_size, embed_size)
 
-            if self.detach_target:
+            if self.detach_vis:
                 vis_feats = vis_feats.detach()
 
             # Get target queries: here, the target queries are the positive triplets -> if there is multilabeling we duplicate the corresponding vis features
@@ -309,7 +309,7 @@ class NetIndepEmb(Net):
         self.optimizer.step() 
 
 
-        # Update the embeddings of source visual phrase
+        # Update the embeddings of source visual phrase 
         if self.use_analogy and self.precomp_vp_source_embedding:
             self.eval()
             for gram in self.queries_source.keys():

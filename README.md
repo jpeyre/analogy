@@ -20,6 +20,7 @@ This code is available for research purpose (MIT License).
   3. [Train](#train)
   4. [Test](#test)
   5. [Evaluation](#evaluation)
+  6. [Erratum](#erratum)
 
 ### Installation
 
@@ -87,6 +88,24 @@ python eval_hico_analogy.py --config_path $CONFIG_PATH
 
 We use the [official evaluation code](https://github.com/ywchao/ho-rcnn) to evaluate performance on HICO-DET 
 
+
+### Erratum
+
+Please note that the numerical results in the paper were obtained using a slightly different version for analogy transformation <img src="https://latex.codecogs.com/svg.latex?\Gamma" title="\Gamma" /> than what is described in Eq.(6) of the paper. This variant computes analogy transformation as:
+
+<img src="https://latex.codecogs.com/svg.latex?\bm{w}^{vp}_{t'}&space;=&space;\bm{w}^{vp}_{t}&space;&plus;&space;\Gamma&space;\begin{bmatrix}&space;\bm{w}^{s}_{s'}&space;-&space;\bm{w}^{vp}_{s}&space;\\&space;\bm{w}^{p}_{p'}&space;-&space;\bm{w}^{vp}_{p}&space;\\&space;\bm{w}^{o}_{o'}&space;-&space;\bm{w}^{vp}_{o}&space;\end{bmatrix}" title="\bm{w}^{vp}_{t'} = \bm{w}^{vp}_{t} + \Gamma \begin{bmatrix} \bm{w}^{s}_{s'} - \bm{w}^{vp}_{s} \\ \bm{w}^{p}_{p'} - \bm{w}^{vp}_{p} \\ \bm{w}^{o}_{o'} - \bm{w}^{vp}_{o}, \end{bmatrix}" />
+
+where <img src="https://latex.codecogs.com/svg.latex?\bm{w}^{s}_{s'},&space;\bm{w}^{p}_{p'},&space;\bm{w}^{o}_{o'}" title="\bm{w}^{s}_{s'}, \bm{w}^{p}_{p'}, \bm{w}^{o}_{o'}" /> are the embeddings of target subject, predicate and object in unigram spaces, and <img src="https://latex.codecogs.com/svg.latex?\bm{w}^{vp}_{s},&space;\bm{w}^{vp}_{p},&space;\bm{w}^{vp}_{o}" title="\bm{w}^{vp}_{s}, \bm{w}^{vp}_{p}, \bm{w}^{vp}_{o}" /> are the embeddings of source subject, predicate and object in visual phrase space. 
+
+You can choose between the 2 versions through the option --analogy_type. The default option described above is called 'hybrid'. 
+To run the variant described in the paper, please activate the option --analogy_type='vp' in the config file such as in './configs/hico_trainvalzeroshot_analogy_vp.yaml'.  
+
+The variant 'vp' results in ~1% performance drop compared to the results in the paper (Table 2. s+o+vp+transfer (deep): 28.6 -> 27.5). The corresponding model is released in runs/ directory. We are still investigating why the 'hybrid' version performs better than the 'vp' one.  
+
+
+We would like to thank Kenneth Wong from Institute of Computing Technology, Chinese Academy of Sciences, for his careful code review and pointing out this inconsistency. 
+
+We apologize for this inconvenience. Also, please do not hesitate to contact the first author for further clarifications. 
 
 ### Cite
 

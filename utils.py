@@ -147,6 +147,7 @@ class Parser(object):
 
         """ Analogy """
         parser.add_argument('--use_analogy', help='Whether to use analogy transformation', action='store_true')
+        parser.add_argument('--analogy_type', default='hybrid', type=str, help='type of analogy to use')
         parser.add_argument('--gamma', default='deep' ,type=str, help='Which gamma function to use for analogy making. The gamma function computes deformation')
         parser.add_argument('--lambda_reg', default=1, type=int,  help='Weight between regularization term and matching')
         parser.add_argument('--num_source_words_common', default=2, type=int,  help='Minimal number of words in source triplets common to target triplet')
@@ -157,8 +158,9 @@ class Parser(object):
         parser.add_argument('--apply_deformation', help='Whether to apply deformation on source triplets', action='store_true')
         parser.add_argument('--precomp_vp_source_embedding', help='Whether to pre-computed vp embedding for source', action='store_true')
         parser.add_argument('--unique_source_random', help='If activated, will sample a unique source triplet at random among pre-selected ones', action='store_true')
-        parser.add_argument('--detach_target', help='Detach target vp embedding in analogy branch', action='store_true')
- 
+        parser.add_argument('--detach_vis', help='Detach target visual visual phrase embedding in analogy branch', action='store_true')
+        parser.add_argument('--detach_lang_analogy', help='Whether to detach language embedding in analogy transformation', action='store_true') 
+
 
         return parser
 

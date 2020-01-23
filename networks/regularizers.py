@@ -30,7 +30,6 @@ class RegAdditive(nn.Module):
         return deformation
 
 
-
 class RegDeep(nn.Module):
     def __init__(self, embed_size, input_dim=900):
         super(RegDeep, self).__init__()

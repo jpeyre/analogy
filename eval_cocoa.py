@@ -312,11 +312,9 @@ model.eval()
 ###########################
 
 if opt.use_analogy:
-    model.precomp_language_features()
 
-    if opt.precomp_vp_source_embedding:
-        model.precomp_source_queries()
-
+    model.precomp_language_features() # pre-compute unigram emb
+    model.precomp_sim_tables() # pre-compute similarity tables for speed-up
     
 # Target queries indices
 queries_sro, triplet_queries_idx = model.precomp_target_queries(triplet_queries)

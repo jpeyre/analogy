@@ -10,8 +10,7 @@ learning_rate : 0.001
 save_epoch : 1
 start_epoch : 10
 num_workers : 8
-pretrained_model : './runs/hico_trainvalzeroshot_base/model_epoch10.pth.tar'
-
+pretrained_model : './runs/hico_trainvalzeroshot_base_precomp/model_epoch10.pth.tar'
 
 train_split : 'trainval_zeroshottriplet'
 test_split : 'test'
@@ -23,7 +22,7 @@ d_hidden : 1024
 num_layers : 2
 sampler : 'priority_object'
 
-exp_name : 'hico_trainvalzeroshot_analogy'
+exp_name : 'hico_trainvalzeroshot_analogy_vp'
 
 add_gt : True
 net_unigram_s : 'appearanceprecompsubject'
@@ -44,14 +43,13 @@ normalize_lang : True
 l2norm_input : True
 
 use_analogy : True
-analogy_type : 'hybrid'
+analogy_type : 'vp'
 apply_deformation : True
 gamma : 'regdeep'
 lambda_reg : 1
 minimal_mass : 10 
 normalize_source : True
 unique_source_random: True
-detach_lang_analogy : True
 embedding_type : 'aggregsourcecorrection'
 sim_method : 'emb_jointspace'
 
@@ -59,7 +57,6 @@ alpha_r : 0.8
 alpha_s : 0.0
 thresh_method : 'top_5'
 num_source_words_common : 0
-
 
 
 # Test options

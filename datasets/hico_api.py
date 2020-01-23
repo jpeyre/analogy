@@ -182,8 +182,8 @@ class Hico(BaseDataset):
     def load_image_ids(self, split):
         path = osp.join(self.data_dir, 'annotations_json', '%s.ids')
         if split=='debug':
-            image_ids = np.loadtxt(open(path%'train','r'))
-            image_ids = self.image_ids[0:10]
+            image_ids = np.loadtxt(open(path%'trainval','r'))
+            image_ids = image_ids[0:10]
         elif split in self.train_split_zeroshot:
             image_ids = np.loadtxt(open(path%split.split('_')[0],'r'))
         else:
@@ -198,8 +198,8 @@ class Hico(BaseDataset):
         """ Load image filenames """
         path = osp.join(self.data_dir, 'annotations_json','image_filenames_%s.json')
         if split=='debug':
-            image_filenames = json.load(open(path%'train','r'))
-            image_filenames = self.image_filenames[0:10]
+            image_filenames = json.load(open(path%'trainval','r'))
+            image_filenames = image_filenames[0:10]
         elif split in self.train_split_zeroshot:
             image_filenames = json.load(open(path%split.split('_')[0],'r'))
         else:
@@ -932,7 +932,7 @@ class Hico(BaseDataset):
         with open(filename) as f:
             reader = csv.DictReader(f)
             for line in reader:
-                occ_split = line['occ_' + split]
+                occ_split = line['occ_' + split] if not split=='debug' else line['occ_train']
                 action_name = line['action_name']
                 triplet_name = self.vocab_grams['sro'].idx2word[count]
                 if triplet_name in triplets_remove:

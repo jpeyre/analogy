@@ -11,6 +11,7 @@ from torch.autograd import Variable
 import numpy as np
 import pickle
 from torch.nn import Parameter
+import pdb
 
 class Net(nn.Module):
 
@@ -49,6 +50,7 @@ class Net(nn.Module):
         self.optim_name    = opt.optimizer
 
         # Analogy parameters
+        self.analogy_type     = opt.analogy_type
         self.lambda_reg       = opt.lambda_reg
         self.normalize_vis    = opt.normalize_vis
         self.normalize_lang   = opt.normalize_lang
@@ -66,7 +68,8 @@ class Net(nn.Module):
 
         self.apply_deformation         = opt.apply_deformation
         self.unique_source_random      = opt.unique_source_random
-        self.detach_target             = opt.detach_target
+        self.detach_vis                = opt.detach_vis
+        self.detach_lang_analogy       = opt.detach_lang_analogy
         self.num_source_words_common   = opt.num_source_words_common
         self.restrict_source_subject   = opt.restrict_source_subject
         self.restrict_source_object    = opt.restrict_source_object
@@ -124,8 +127,6 @@ class Net(nn.Module):
         self.sim_precomp = None
         self.language_features_precomp = {} 
         self.precomp_triplet_mass()
-        self.queries_source = {} 
-        self.lang_feats_precomp_source = {} 
         self.triplet_cat_source_common = []
 
 
@@ -134,39 +135,53 @@ class Net(nn.Module):
             self.triplet_cat_source_common = self.precomp_triplet_cat_source(idx_in_vocab_all=True, minimal_mass=self.minimal_mass) 
 
 
-    def precomp_source_queries(self):
-        """ Precompute source queries features """
-        self.eval() 
-        queries_source = {}
+    def get_quadruplets_emb(self, queries, emb_type, detach_emb=False):
+        """ 
+        Get embedding 's','r','o','vp' for analogy -> allow different version of emb_type:
+        'unigram' : subject, object, predicate embeddings in Eq.(6) come from unigram branches
+        'vp' : subject, object, predicate embeddings come from vp branch with [0,0,*] as described in paper
+        Also add options finetuning or not language embeddings
+        """
 
-        queries_source['sro'] = Variable(torch.from_numpy(self.triplet_cat_source_common))
-        queries_source['s']   = queries_source['sro'].clone()
-        queries_source['s'][:,1:] = 0
-        queries_source['r']   = queries_source['sro'].clone()
-        queries_source['r'][:,[0,2]] = 0
-        queries_source['o']   = queries_source['sro'].clone()
-        queries_source['o'][:,:2] = 0
+        lang_feats_precomp = {}
 
-        if torch.cuda.is_available():
-            for gram in queries_source.keys():
-                queries_source[gram] = queries_source[gram].cuda()
+        if emb_type=='vp':
 
-        for gram in queries_source.keys():
-            lang_feats_precomp_source_gram         = self.get_language_features(queries_source[gram], 'sro')
-            self.lang_feats_precomp_source[gram]   = lang_feats_precomp_source_gram.detach()
-            self.queries_source[gram]              = queries_source[gram]
+            queries_vp = {}
+            queries_vp['sro'] = queries.clone()
+            queries_vp['s']   = queries_vp['sro'].clone()
+            queries_vp['s'][:,1:] = 0
+            queries_vp['r']   = queries_vp['sro'].clone()
+            queries_vp['r'][:,[0,2]] = 0
+            queries_vp['o']   = queries_vp['sro'].clone()
+            queries_vp['o'][:,:2] = 0
+
+            for gram in queries_vp.keys():
+                lang_feats_precomp[gram] = self.get_language_features(queries_vp[gram], 'sro')
+
+
+        elif emb_type=='unigram':
+
+            lang_feats_precomp['s']   = self.get_language_features(queries[:,0].unsqueeze(1), 's').detach() # do not finetune unigram
+            lang_feats_precomp['r']   = self.get_language_features(queries[:,1].unsqueeze(1), 'r').detach()
+            lang_feats_precomp['o']   = self.get_language_features(queries[:,2].unsqueeze(1), 'o').detach()
+            lang_feats_precomp['sro'] = self.get_language_features(queries, 'sro')
+
+
+        if detach_emb:
+            for gram in lang_feats_precomp:
+                lang_feats_precomp[gram] = lang_feats_precomp[gram].detach()
+
+
+        return lang_feats_precomp
 
 
     def precomp_target_queries(self, triplet_queries):
         """ Precompute target queries indices """
         self.eval()
 
-        lang_feats_precomp_r = self.get_lang_precomp_feats('r')
-        lang_feats_precomp_s = self.get_lang_precomp_feats('s')
-        lang_feats_precomp_o = self.get_lang_precomp_feats('o') 
-
         triplet_queries_idx = np.zeros((len(triplet_queries),3), dtype=np.int)
-        queries_sro = Variable(torch.zeros(len(triplet_queries),3).type(lang_feats_precomp_r.data.type())).long()
+        queries_sro = Variable(torch.zeros(len(triplet_queries),3)).long()
 
         for count,triplet_query in enumerate(triplet_queries):
 
@@ -717,7 +732,7 @@ class Net(nn.Module):
         d = self.embed_size
 
         # If too many queries, split computation to avoid out-of-memory
-        max_num_queries = 10000
+        max_num_queries = 100
         if M <= max_num_queries:
             vis_feats   = vis_feats.unsqueeze(1).expand(N, M, d)
             scores_gram = torch.mul(vis_feats, language_feats)
@@ -728,7 +743,8 @@ class Net(nn.Module):
         else:
             scores_gram = [] 
             vis_feats = vis_feats.unsqueeze(1).expand(N, M, d)
-            for j in range(M//max_num_queries+1): 
+            num_splits = M//max_num_queries if (M%max_num_queries)==0 else M//max_num_queries+1
+            for j in range(num_splits): 
                 start_query = j*max_num_queries 
                 end_query   = start_query + max_num_queries if start_query + max_num_queries <= M else M
                 scores_gram_split = torch.mul(vis_feats[:,start_query:end_query,:], language_feats[:,start_query:end_query,:])
@@ -807,48 +823,37 @@ class Net(nn.Module):
         return lang_feats_precomp
 
 
-
-    def get_language_features_analogy(self, queries):
-        """
-        Input: list of queries Mx3 in vocab[all] indices
-        """ 
+    def get_language_features_analogy(self, queries_target):
+        """ Input: list of queries Mx3 in vocab[all] indices """ 
 
         language_features_analogy = []
 
 
-        queries_dim = queries.dim()
+        queries_dim = queries_target.dim()
         if queries_dim==3:
-            M = queries.size(1)
-            queries = queries.view(-1,3) # resize (N,M,k) -> (N*M,k)
+            M = queries_target.size(1)
+            queries_target = queries_target.view(-1,3) # resize (N,M,k) -> (N*M,k)
         elif queries_dim==2:
-            M = queries.size(0)
+            M = queries_target.size(0)
+
+        
+        # Compute language embedding for target
+        if self.analogy_type=='vp':
+            lang_feats_precomp_target = self.get_quadruplets_emb(queries_target, 'vp', detach_emb = self.detach_lang_analogy)
+
+        elif self.analogy_type=='hybrid':
+            lang_feats_precomp_target = self.get_quadruplets_emb(queries_target, 'unigram', detach_emb = self.detach_lang_analogy)
 
 
-        # For speed-up : pre-compute embedding for target language features
-        language_features_target = {}
-        language_features_target['s']   = self.get_language_features(queries[:,0].unsqueeze(1), 's').detach()
-        language_features_target['r']   = self.get_language_features(queries[:,1].unsqueeze(1), 'r').detach()
-        language_features_target['o']   = self.get_language_features(queries[:,2].unsqueeze(1), 'o').detach()
-        language_features_target['sro'] = self.get_language_features(queries[:,:], 'sro').detach()
-
-
-        # Speed-up: pre-compute similarities unigram space between target and all source features
-        similarities_precomp = []
-        if self.precomp_vp_source_embedding:
-            similarities_precomp = self.alpha_s*(torch.matmul(language_features_target['s'], \
-                                                                self.lang_feats_precomp_source['s'].transpose(0,1))) + \
-                                    (1-self.alpha_r-self.alpha_s)*(torch.matmul(language_features_target['o'], \
-                                                                self.lang_feats_precomp_source['o'].transpose(0,1))) + \
-                                    self.alpha_r*(torch.matmul(language_features_target['r'], \
-                                                                self.lang_feats_precomp_source['r'].transpose(0,1)))
- 
         for j in range(M):
 
-            query = queries[j,:]
+            query = queries_target[j,:]
             language_feats_query = {}
-            for gram in language_features_target.keys():
-                language_feats_query[gram] = language_features_target[gram][j,:]
+            for gram in lang_feats_precomp_target.keys():
 
+                # Debug
+                #language_feats_query[gram] = language_features_target[gram][j,:]
+                language_feats_query[gram] = lang_feats_precomp_target[gram][j,:]
 
 
             triplet_cat_source, idx_source = self.get_candidates_source(query,\
@@ -860,29 +865,19 @@ class Net(nn.Module):
 
             # If not source sampled, just use the query embedding
             if triplet_cat_source.shape[0]==0:
-
                 predictor = language_feats_query['sro']
-
             else:
-
                 # Further threshold source triplets by similarities (could eventually be merged with get_candidates_source
-                if len(similarities_precomp)>0:
-                    similarities = similarities_precomp[:,idx_source][j]
-                    similarities = similarities.data.cpu().numpy()
-                else:
-                    similarities = self.get_similarities_source(query, triplet_cat_source, \
-                                                                sim_method = self.sim_method,\
-                                                                alpha_r    = self.alpha_r,\
-                                                                alpha_s    = self.alpha_s)
-
+                similarities = self.get_similarities_source(query, triplet_cat_source, \
+                                                            sim_method = self.sim_method,\
+                                                            alpha_r    = self.alpha_r,\
+                                                            alpha_s    = self.alpha_s)
                 idx_thresh = self.threshold_similarities_source(similarities, thresh_method = self.thresh_method)
 
 
                 # If not source sampled, just use query embedding
                 if len(idx_thresh)==0:
-    
                     predictor = language_feats_query['sro']
-
                 else:
                     triplet_cat_source  = triplet_cat_source[idx_thresh,:]
                     idx_source          = idx_source[idx_thresh]
@@ -902,7 +897,6 @@ class Net(nn.Module):
                     predictor = self.aggregate_predictors_source(query, \
                                                                  language_feats_query,\
                                                                  triplet_cat_source,\
-                                                                 idx_source,\
                                                                  similarities, \
                                                                  apply_deformation = self.apply_deformation, \
                                                                  normalize_source  = self.normalize_source, \
@@ -1055,53 +1049,50 @@ class Net(nn.Module):
 
         return
 
-    def aggregate_predictors_source(self, query, language_features_target, triplet_cat_source, idx_source, similarities, apply_deformation=False, normalize_source=False, use_target=False):
+    def aggregate_predictors_source(self, query, language_features_target, triplet_cat_source, similarities, apply_deformation=False, normalize_source=False, use_target=False):
 
         quadruplets = {}
 
+        """ Get language embeddings of target triplets """
+        for gram in ['s','r','o','sro']:
+            quadruplets['target_' + gram] = language_features_target[gram].unsqueeze(0)
+
+
         """ Get the language embeddings of source triplets """
-        if self.precomp_vp_source_embedding:
+        queries_source = Variable(torch.from_numpy(triplet_cat_source).long()).cuda()
 
-            for gram in ['s','r','o','sro']:
-                quadruplets['source_' + gram] = self.lang_feats_precomp_source[gram][idx_source,:] # already detached
+        if self.analogy_type=='vp':
+            language_features_source = self.get_quadruplets_emb(queries_source, 'vp', detach_emb = self.detach_lang_analogy)
 
-        else:
-            queries_sro = Variable(torch.from_numpy(triplet_cat_source).long())
-
-            if torch.cuda.is_available():
-                queries_sro = queries_sro.cuda()
-
-            quadruplets['source_sro'] = self.get_language_features(queries_sro, 'sro').detach()
-            quadruplets['source_s']   = self.get_language_features(queries_sro[:,0].unsqueeze(1), 's').detach()
-            quadruplets['source_r']   = self.get_language_features(queries_sro[:,1].unsqueeze(1), 'r').detach()
-            quadruplets['source_o']   = self.get_language_features(queries_sro[:,2].unsqueeze(1), 'o').detach()
-            
-
-        """ Get the language embeddings of target triplet """
-        quadruplets['target_sro'] = language_features_target['sro'].unsqueeze(0)
-        quadruplets['target_s']   = language_features_target['s'].unsqueeze(0)
-        quadruplets['target_r']   = language_features_target['r'].unsqueeze(0)
-        quadruplets['target_o']   = language_features_target['o'].unsqueeze(0)
+        elif self.analogy_type=='hybrid':
+            language_features_source = self.get_quadruplets_emb(queries_source, 'vp', detach_emb = self.detach_lang_analogy)
 
 
-        """ Transformed source embedding if needed """
+        for gram in ['s','r','o','sro']:
+            quadruplets['source_' + gram] = language_features_source[gram]   
+
+
+        """ Transform source triplet embedding"""
+
+        # Get souce embedding
+        source_emb = quadruplets['source_sro']
+
+        # Transform source embedding if needed
         if apply_deformation:
-            deformation   = self.reg_network(quadruplets)
-            transformed_source = quadruplets['source_sro'] + deformation
-        else:
-            transformed_source = quadruplets['source_sro']
+            deformation = self.reg_network(quadruplets)
+            source_emb  = source_emb + deformation
 
         # Normalize before aggregation
         if normalize_source:
-            norm               = transformed_source.norm(p=2,dim=1)
-            transformed_source = transformed_source.div(norm.unsqueeze(1).expand_as(transformed_source))
+            norm       = source_emb.norm(p=2,dim=1)
+            source_emb = source_emb.div(norm.unsqueeze(1).expand_as(source_emb))
 
 
         """ Aggregate according to similarity """
         # If use target -> add target to similarity and embedding
         if use_target:
             similarities = np.hstack((similarities, 1.0))
-            transformed_source = torch.cat((transformed_source, quadruplets['target_sro']),0)
+            source_emb = torch.cat((source_emb, quadruplets['target_sro']),0)
 
         # Aggreg with similarity
         similarities = Variable(torch.from_numpy(similarities)).float()
@@ -1110,7 +1101,7 @@ class Net(nn.Module):
             similarities = similarities.cuda()
 
         similarities_softmax = F.softmax(similarities)
-        aggreg_predictor = (similarities_softmax.unsqueeze(1)*transformed_source).sum(0)
+        aggreg_predictor = (similarities_softmax.unsqueeze(1)*source_emb).sum(0)
 
         # Normalize again
         if normalize_source:

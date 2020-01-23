@@ -223,7 +223,7 @@ def evaluate(epoch, split):
         test_loss['reg'].reset()
 
 
-    return recall_gram, loss_gram, precision_gram, recall_gram
+    return loss_gram, precision_gram, recall_gram
 
 
 #####################
@@ -357,11 +357,12 @@ if opt.pretrained_model:
 """ Speed-up """
 ################
 
-if opt.use_analogy:
-    model.precomp_language_features()
+model.eval()
 
-    if opt.precomp_vp_source_embedding:
-        model.precomp_source_queries()
+if opt.use_analogy:
+    
+    model.precomp_language_features() # pre-compute unigram emb
+    model.precomp_sim_tables() # pre-compute similarity tables for speed-up
 
 
 ###########
@@ -371,7 +372,7 @@ if opt.use_analogy:
 model.train()
 
 print('Train classifier')
-best_acc = 0
+best_recall = 0
 for epoch in range(opt.num_epochs):
     epoch_effective = epoch + opt.start_epoch + 1
 
@@ -380,29 +381,27 @@ for epoch in range(opt.num_epochs):
     train(epoch, opt.train_split)
 
     # Val
-    accuracy_test, loss_test, precision_test, recall_test = evaluate(epoch, opt.test_split)
+    loss_test, precision_test, recall_test = evaluate(epoch, opt.test_split)
     
     if epoch_effective%opt.save_epoch==0:
         state = {
                 'epoch':epoch_effective,
                 'model':model.state_dict(),
                 'loss':loss_test,
-                'acc':accuracy_test,
                 'precision':precision_test,
                 'recall':recall_test,
                 }
         torch.save(state, osp.join(logger_path, 'model_' + 'epoch' + str(epoch_effective) + '.pth.tar'))
 
-    if accuracy_test > best_acc:
+    if recall_test > best_recall:
         state = {
                 'epoch':epoch_effective,
                 'model':model.state_dict(),
                 'min_loss':loss_test,
-                'acc':accuracy_test,
                 'precision':precision_test,
                 'recall':recall_test,
                 }
         torch.save(state, osp.join(logger_path, 'model_best.pth.tar'))
-        best_acc = accuracy_test
+        best_recall = recall_test
     
 
